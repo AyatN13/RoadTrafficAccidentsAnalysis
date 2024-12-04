@@ -1,0 +1,1668 @@
+<section id="road-traffic-accidents" class="cell markdown" id="-J7XAkOdzd8e">
+<h1><strong>Road Traffic Accidents</strong></h1>
+<p>Fall 2024 Data Science Project</p>
+<p>Ayat Noor, Nandini Shah, Henna Poon</p>
+<p><strong>Contributions</strong></p>
+<p>Ayat Noor: Drafted the introduction and formulated key research questions to establish a solid foundation for the project. Conducted a Chi-Square test to evaluate the correlation between location (by state) and accident severity.</p>
+<p>Henna Poon: Prepared the dataset, cleaned, and preprocessed data for analysis. Conducted initial exploratory data analysis and created visualizations for key patterns.</p>
+<p>Nandini Shah: Explored data trends and contributed to statistical analysis. Created boxplots to highlight variations in accident severity and wrote the conclusion.</p>
+</section>
+<div class="cell markdown" id="EikPGSc5htru">
+<h1 id="2-introduction"><strong>2. Introduction</strong></h1>
+<p>Traffic accidents are a significant concern worldwide, impacting public safety and economic costs. By analyzing data on road traffic accidents, we aim to uncover patterns and insights that can inform safety measures and urban planning.</p>
+<h1 id="key-questions">Key Questions:</h1>
+<p>How does the time of day impact the severity of road accidents? Are weather conditions associated with the severity of road accidents? Do certain states have significantly different accident severity distributions?</p>
+<p>Importance: Understanding these trends is crucial for reducing traffic accidents and saving lives.</p>
+</div>
+<div class="cell markdown" id="smnEUplrh_4V">
+<h1 id="3-data-curation"><strong>3. Data Curation</strong></h1>
+<p>The dataset for this project was sourced from Kaggle: <a href="https://www.kaggle.com/datasets/sobhanmoosavi/us-accidents">Road Traffic Accidents Dataset</a>. It contains data from 2017 to 2020, including details such as time, location, weather, and severity of accidents.</p>
+<p>We used a sampled version of the dataset that contains 500,000 datapoints: <a href="https://drive.google.com/file/d/1U3u8QYzLjnEaSurtZfSAS_oh9AT2Mn8X">Sampled Data</a></p>
+<p>Link to the paper our dataset comes from: <a href="https://dl.acm.org/doi/pdf/10.1145/3347146.3359078" class="uri">https://dl.acm.org/doi/pdf/10.1145/3347146.3359078</a>.</p>
+<h1 id="steps-taken-to-curate-the-data">Steps Taken to Curate the Data:</h1>
+<p>Loaded the data: Imported the dataset into a Pandas DataFrame.</p>
+<p>Dropped irrelevant columns: Removed unnecessary features such as Zipcode, City, Wind Direction, and Description that did not add value to our analysis.</p>
+<p>Simplified features: Combined binary features like Crossing, Bump, and Railway into a single POI (Points of Interest) column.</p>
+<p>Created new features: Extracted Day_of_Week and Hour_of_Day from the Start_Time column for temporal analysis.</p>
+<p>Cleaned categorical data: Grouped weather conditions into categories such as Fair, Cloudy, Precipitation, and Low Visibility.</p>
+<p>Filtered data: Removed rows with null or ambiguous values.</p>
+</div>
+<div class="cell markdown" id="_HrWNdeuimtY">
+<p><strong>Imports:</strong></p>
+</div>
+<div class="cell code" data-execution_count="1" id="tTPtu9yZsGBS">
+<div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="im">from</span> scipy <span class="im">import</span> stats</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="im">from</span> scipy.stats <span class="im">import</span> mannwhitneyu</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a><span class="im">from</span> itertools <span class="im">import</span> combinations</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a><span class="im">import</span> statsmodels.stats.multitest <span class="im">as</span> multitest</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a><span class="im">import</span> seaborn <span class="im">as</span> sns</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a><span class="im">from</span> google.colab <span class="im">import</span> drive</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a><span class="im">import</span> numpy <span class="im">as</span> np</span></code></pre></div>
+</div>
+<div class="cell markdown" id="Hk6nqGSdwScp">
+<p><strong>Loading Data into Dataframe:</strong></p>
+</div>
+<div class="cell code" data-execution_count="7" data-colab="{&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="h9-gPXauBNiY" data-outputId="9ee71303-133b-43f5-a8fd-30d9793078b7">
+<div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a>df <span class="op">=</span> pd.read_csv(<span class="st">&#39;US_Accidents_March23_sampled_500k.csv&#39;</span>)</span></code></pre></div>
+<div class="output stream stderr">
+<pre><code>&lt;ipython-input-7-6dc9a165a0e9&gt;:1: DtypeWarning: Columns (29,30,31,32,33,34,35,36,37,38,39,40,41) have mixed types. Specify dtype option on import or set low_memory=False.
+  df = pd.read_csv(&#39;US_Accidents_March23_sampled_500k.csv&#39;)
+</code></pre>
+</div>
+</div>
+<div class="cell markdown" id="ljI0wjPN5NrG">
+<p><strong>Handling Time:</strong></p>
+<p>We removed End_Time and changed Start_Time to just Time.</p>
+<p>We also added a Day_of_Week column and Hour_of_Day column to make time based comparisons easier.</p>
+</div>
+<div class="cell code" data-execution_count="8" id="WMzV2Awc5f1h">
+<div class="sourceCode" id="cb4"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="co"># Rename Start_Time to Time</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a>df.rename(columns<span class="op">=</span>{<span class="st">&#39;Start_Time&#39;</span>: <span class="st">&#39;Time&#39;</span>}, inplace<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a><span class="co"># Reformat Time to be a datetime</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a>df[<span class="st">&#39;Time&#39;</span>] <span class="op">=</span> pd.to_datetime(df[<span class="st">&#39;Time&#39;</span>], <span class="bu">format</span><span class="op">=</span><span class="st">&#39;mixed&#39;</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a><span class="co"># Drop End_Time</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true"></a>df <span class="op">=</span> df.drop(columns<span class="op">=</span><span class="st">&#39;End_Time&#39;</span>)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true"></a><span class="co"># Create day and hour columns</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true"></a>df[<span class="st">&#39;Day_of_Week&#39;</span>] <span class="op">=</span> df[<span class="st">&#39;Time&#39;</span>].dt.day_name()</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true"></a>df[<span class="st">&#39;Hour_of_Day&#39;</span>] <span class="op">=</span> df[<span class="st">&#39;Time&#39;</span>].dt.hour</span></code></pre></div>
+</div>
+<div class="cell markdown" id="x0rD4Ks45ln0">
+<p><strong>Handling Points of Interest (POI):</strong></p>
+<p>Many of the columns in our data like Bump, Crossing, and Railway indicate points of interest. We will be combining all of these columns into one called POI in order to simplify and reduce the amount of features in our dataset.</p>
+</div>
+<div class="cell code" data-execution_count="9" id="TTkAESIGwJWk">
+<div class="sourceCode" id="cb5"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="co"># Create POI column</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>df[<span class="st">&#39;POI&#39;</span>] <span class="op">=</span> df[[<span class="st">&#39;Bump&#39;</span>, <span class="st">&#39;Crossing&#39;</span>, <span class="st">&#39;Give_Way&#39;</span>, <span class="st">&#39;Junction&#39;</span>, <span class="st">&#39;No_Exit&#39;</span>, <span class="st">&#39;Railway&#39;</span>,<span class="st">&#39;Roundabout&#39;</span>, <span class="st">&#39;Station&#39;</span>, <span class="st">&#39;Stop&#39;</span>, <span class="st">&#39;Traffic_Calming&#39;</span>, <span class="st">&#39;Traffic_Signal&#39;</span>,<span class="st">&#39;Turning_Loop&#39;</span>, <span class="st">&#39;Amenity&#39;</span>]].<span class="bu">any</span>(axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a><span class="co"># Drop all extra columns</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a>df <span class="op">=</span> df.drop(columns<span class="op">=</span>[<span class="st">&#39;Bump&#39;</span>, <span class="st">&#39;Crossing&#39;</span>, <span class="st">&#39;Give_Way&#39;</span>, <span class="st">&#39;Junction&#39;</span>, <span class="st">&#39;No_Exit&#39;</span>, <span class="st">&#39;Railway&#39;</span>,<span class="st">&#39;Roundabout&#39;</span>, <span class="st">&#39;Station&#39;</span>, <span class="st">&#39;Stop&#39;</span>, <span class="st">&#39;Traffic_Calming&#39;</span>, <span class="st">&#39;Traffic_Signal&#39;</span>,<span class="st">&#39;Turning_Loop&#39;</span>, <span class="st">&#39;Amenity&#39;</span>])</span></code></pre></div>
+</div>
+<div class="cell markdown" id="9m0egeHr62GQ">
+<p><strong>Drop Irrelevant Columns:</strong></p>
+<p>We dropped other columns that are much too specific for our purposes including zipcode, latitude and longitude, airpoirt codes, and wind direction. We would not be able to find meaningful trends because these features might not exist for all datapoints or do not contribute in significant ways to the cause of an accident.</p>
+</div>
+<div class="cell code" data-execution_count="10" data-colab="{&quot;height&quot;:779,&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="-SrlZdo94tUF" data-outputId="27106cd9-08d7-429f-cf0a-baeb9bcb98cd">
+<div class="sourceCode" id="cb6"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="co"># Dropping columns that gives irrelevant location info</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a>df <span class="op">=</span> df.drop(columns<span class="op">=</span>[<span class="st">&#39;Country&#39;</span>, <span class="st">&#39;Start_Lat&#39;</span>, <span class="st">&#39;Start_Lng&#39;</span>, <span class="st">&#39;End_Lat&#39;</span>, <span class="st">&#39;End_Lng&#39;</span>, <span class="st">&#39;Zipcode&#39;</span>, <span class="st">&#39;Street&#39;</span>, <span class="st">&#39;City&#39;</span>, <span class="st">&#39;County&#39;</span>, <span class="st">&#39;Distance(mi)&#39;</span>])</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true"></a><span class="co"># Dropping columns that give too specific Weather info</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true"></a>df <span class="op">=</span> df.drop(columns<span class="op">=</span>[<span class="st">&#39;Humidity(%)&#39;</span>, <span class="st">&#39;Weather_Timestamp&#39;</span>, <span class="st">&#39;Wind_Direction&#39;</span>, <span class="st">&#39;Pressure(in)&#39;</span>, <span class="st">&#39;Wind_Speed(mph)&#39;</span>, <span class="st">&#39;Wind_Chill(F)&#39;</span>])</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true"></a></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true"></a><span class="co"># Dropping columns that give irrelevant time info</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true"></a>df <span class="op">=</span> df.drop(columns<span class="op">=</span>[<span class="st">&#39;Timezone&#39;</span>, <span class="st">&#39;Civil_Twilight&#39;</span>, <span class="st">&#39;Nautical_Twilight&#39;</span>, <span class="st">&#39;Astronomical_Twilight&#39;</span>])</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true"></a><span class="co"># Dropping columns that are unuseful</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true"></a>df <span class="op">=</span> df.drop(columns<span class="op">=</span>[<span class="st">&#39;Description&#39;</span>, <span class="st">&#39;Airport_Code&#39;</span>, <span class="st">&#39;Source&#39;</span>])</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true"></a>df</span></code></pre></div>
+<div class="output execute_result" data-execution_count="10">
+
+  <div id="df-17ae20dd-0745-4e80-b2d3-12c499eecbb7" class="colab-df-container">
+    <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ID</th>
+      <th>Severity</th>
+      <th>Time</th>
+      <th>State</th>
+      <th>Temperature(F)</th>
+      <th>Visibility(mi)</th>
+      <th>Precipitation(in)</th>
+      <th>Weather_Condition</th>
+      <th>Sunrise_Sunset</th>
+      <th>Day_of_Week</th>
+      <th>Hour_of_Day</th>
+      <th>POI</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>A-2047758</td>
+      <td>2</td>
+      <td>2019-06-12 10:10:56</td>
+      <td>LA</td>
+      <td>77.0</td>
+      <td>10.00</td>
+      <td>0.00</td>
+      <td>Fair</td>
+      <td>Day</td>
+      <td>Wednesday</td>
+      <td>10</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>A-4694324</td>
+      <td>2</td>
+      <td>2022-12-03 23:37:14</td>
+      <td>VA</td>
+      <td>45.0</td>
+      <td>10.00</td>
+      <td>0.00</td>
+      <td>Fair</td>
+      <td>Night</td>
+      <td>Saturday</td>
+      <td>23</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>A-5006183</td>
+      <td>2</td>
+      <td>2022-08-20 13:13:00</td>
+      <td>CA</td>
+      <td>68.0</td>
+      <td>10.00</td>
+      <td>0.00</td>
+      <td>Fair</td>
+      <td>Day</td>
+      <td>Saturday</td>
+      <td>13</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>A-4237356</td>
+      <td>2</td>
+      <td>2022-02-21 17:43:04</td>
+      <td>MN</td>
+      <td>27.0</td>
+      <td>10.00</td>
+      <td>0.00</td>
+      <td>Wintry Mix</td>
+      <td>Day</td>
+      <td>Monday</td>
+      <td>17</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>A-6690583</td>
+      <td>2</td>
+      <td>2020-12-04 01:46:00</td>
+      <td>CA</td>
+      <td>42.0</td>
+      <td>10.00</td>
+      <td>0.00</td>
+      <td>Fair</td>
+      <td>Night</td>
+      <td>Friday</td>
+      <td>1</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>101041</th>
+      <td>A-933283</td>
+      <td>2</td>
+      <td>2021-08-19 06:48:01</td>
+      <td>SC</td>
+      <td>76.0</td>
+      <td>10.00</td>
+      <td>0.00</td>
+      <td>Fair</td>
+      <td>Night</td>
+      <td>Thursday</td>
+      <td>6</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>101042</th>
+      <td>A-4280589</td>
+      <td>2</td>
+      <td>2022-09-06 09:30:00</td>
+      <td>DE</td>
+      <td>71.0</td>
+      <td>0.75</td>
+      <td>0.52</td>
+      <td>Heavy Rain</td>
+      <td>Day</td>
+      <td>Tuesday</td>
+      <td>9</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>101043</th>
+      <td>A-2059844</td>
+      <td>3</td>
+      <td>2019-06-19 09:20:51</td>
+      <td>VA</td>
+      <td>73.0</td>
+      <td>10.00</td>
+      <td>0.00</td>
+      <td>Mostly Cloudy</td>
+      <td>Day</td>
+      <td>Wednesday</td>
+      <td>9</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>101044</th>
+      <td>A-708466</td>
+      <td>3</td>
+      <td>2022-02-16 06:12:23</td>
+      <td>IL</td>
+      <td>46.0</td>
+      <td>10.00</td>
+      <td>0.00</td>
+      <td>Cloudy</td>
+      <td>Night</td>
+      <td>Wednesday</td>
+      <td>6</td>
+      <td>False</td>
+    </tr>
+    <tr>
+      <th>101045</th>
+      <td>A-5866055</td>
+      <td>2</td>
+      <td>2021-03-23 17:02:30</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>Tuesday</td>
+      <td>17</td>
+      <td>False</td>
+    </tr>
+  </tbody>
+</table>
+<p>101046 rows × 12 columns</p>
+</div>
+    <div class="colab-df-buttons">
+
+  <div class="colab-df-container">
+    <button class="colab-df-convert" onclick="convertToInteractive('df-17ae20dd-0745-4e80-b2d3-12c499eecbb7')"
+            title="Convert this dataframe to an interactive table."
+            style="display:none;">
+
+  <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960">
+    <path d="M120-120v-720h720v720H120Zm60-500h600v-160H180v160Zm220 220h160v-160H400v160Zm0 220h160v-160H400v160ZM180-400h160v-160H180v160Zm440 0h160v-160H620v160ZM180-180h160v-160H180v160Zm440 0h160v-160H620v160Z"/>
+  </svg>
+    </button>
+
+  <style>
+    .colab-df-container {
+      display:flex;
+      gap: 12px;
+    }
+
+    .colab-df-convert {
+      background-color: #E8F0FE;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      fill: #1967D2;
+      height: 32px;
+      padding: 0 0 0 0;
+      width: 32px;
+    }
+
+    .colab-df-convert:hover {
+      background-color: #E2EBFA;
+      box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
+      fill: #174EA6;
+    }
+
+    .colab-df-buttons div {
+      margin-bottom: 4px;
+    }
+
+    [theme=dark] .colab-df-convert {
+      background-color: #3B4455;
+      fill: #D2E3FC;
+    }
+
+    [theme=dark] .colab-df-convert:hover {
+      background-color: #434B5C;
+      box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+      filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
+      fill: #FFFFFF;
+    }
+  </style>
+
+    <script>
+      const buttonEl =
+        document.querySelector('#df-17ae20dd-0745-4e80-b2d3-12c499eecbb7 button.colab-df-convert');
+      buttonEl.style.display =
+        google.colab.kernel.accessAllowed ? 'block' : 'none';
+
+      async function convertToInteractive(key) {
+        const element = document.querySelector('#df-17ae20dd-0745-4e80-b2d3-12c499eecbb7');
+        const dataTable =
+          await google.colab.kernel.invokeFunction('convertToInteractive',
+                                                    [key], {});
+        if (!dataTable) return;
+
+        const docLinkHtml = 'Like what you see? Visit the ' +
+          '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
+          + ' to learn more about interactive tables.';
+        element.innerHTML = '';
+        dataTable['output_type'] = 'display_data';
+        await google.colab.output.renderOutput(dataTable, element);
+        const docLink = document.createElement('div');
+        docLink.innerHTML = docLinkHtml;
+        element.appendChild(docLink);
+      }
+    </script>
+  </div>
+
+
+<div id="df-440552cc-604f-4825-849a-6451acece1a5">
+  <button class="colab-df-quickchart" onclick="quickchart('df-440552cc-604f-4825-849a-6451acece1a5')"
+            title="Suggest charts"
+            style="display:none;">
+
+<svg xmlns="http://www.w3.org/2000/svg" height="24px"viewBox="0 0 24 24"
+     width="24px">
+    <g>
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+    </g>
+</svg>
+  </button>
+
+<style>
+  .colab-df-quickchart {
+      --bg-color: #E8F0FE;
+      --fill-color: #1967D2;
+      --hover-bg-color: #E2EBFA;
+      --hover-fill-color: #174EA6;
+      --disabled-fill-color: #AAA;
+      --disabled-bg-color: #DDD;
+  }
+
+  [theme=dark] .colab-df-quickchart {
+      --bg-color: #3B4455;
+      --fill-color: #D2E3FC;
+      --hover-bg-color: #434B5C;
+      --hover-fill-color: #FFFFFF;
+      --disabled-bg-color: #3B4455;
+      --disabled-fill-color: #666;
+  }
+
+  .colab-df-quickchart {
+    background-color: var(--bg-color);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: none;
+    fill: var(--fill-color);
+    height: 32px;
+    padding: 0;
+    width: 32px;
+  }
+
+  .colab-df-quickchart:hover {
+    background-color: var(--hover-bg-color);
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+    fill: var(--button-hover-fill-color);
+  }
+
+  .colab-df-quickchart-complete:disabled,
+  .colab-df-quickchart-complete:disabled:hover {
+    background-color: var(--disabled-bg-color);
+    fill: var(--disabled-fill-color);
+    box-shadow: none;
+  }
+
+  .colab-df-spinner {
+    border: 2px solid var(--fill-color);
+    border-color: transparent;
+    border-bottom-color: var(--fill-color);
+    animation:
+      spin 1s steps(1) infinite;
+  }
+
+  @keyframes spin {
+    0% {
+      border-color: transparent;
+      border-bottom-color: var(--fill-color);
+      border-left-color: var(--fill-color);
+    }
+    20% {
+      border-color: transparent;
+      border-left-color: var(--fill-color);
+      border-top-color: var(--fill-color);
+    }
+    30% {
+      border-color: transparent;
+      border-left-color: var(--fill-color);
+      border-top-color: var(--fill-color);
+      border-right-color: var(--fill-color);
+    }
+    40% {
+      border-color: transparent;
+      border-right-color: var(--fill-color);
+      border-top-color: var(--fill-color);
+    }
+    60% {
+      border-color: transparent;
+      border-right-color: var(--fill-color);
+    }
+    80% {
+      border-color: transparent;
+      border-right-color: var(--fill-color);
+      border-bottom-color: var(--fill-color);
+    }
+    90% {
+      border-color: transparent;
+      border-bottom-color: var(--fill-color);
+    }
+  }
+</style>
+
+  <script>
+    async function quickchart(key) {
+      const quickchartButtonEl =
+        document.querySelector('#' + key + ' button');
+      quickchartButtonEl.disabled = true;  // To prevent multiple clicks.
+      quickchartButtonEl.classList.add('colab-df-spinner');
+      try {
+        const charts = await google.colab.kernel.invokeFunction(
+            'suggestCharts', [key], {});
+      } catch (error) {
+        console.error('Error during call to suggestCharts:', error);
+      }
+      quickchartButtonEl.classList.remove('colab-df-spinner');
+      quickchartButtonEl.classList.add('colab-df-quickchart-complete');
+    }
+    (() => {
+      let quickchartButtonEl =
+        document.querySelector('#df-440552cc-604f-4825-849a-6451acece1a5 button');
+      quickchartButtonEl.style.display =
+        google.colab.kernel.accessAllowed ? 'block' : 'none';
+    })();
+  </script>
+</div>
+
+  <div id="id_b46744f8-4ced-47f4-888b-029bbb221aa3">
+    <style>
+      .colab-df-generate {
+        background-color: #E8F0FE;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        display: none;
+        fill: #1967D2;
+        height: 32px;
+        padding: 0 0 0 0;
+        width: 32px;
+      }
+
+      .colab-df-generate:hover {
+        background-color: #E2EBFA;
+        box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
+        fill: #174EA6;
+      }
+
+      [theme=dark] .colab-df-generate {
+        background-color: #3B4455;
+        fill: #D2E3FC;
+      }
+
+      [theme=dark] .colab-df-generate:hover {
+        background-color: #434B5C;
+        box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+        filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
+        fill: #FFFFFF;
+      }
+    </style>
+    <button class="colab-df-generate" onclick="generateWithVariable('df')"
+            title="Generate code using this dataframe."
+            style="display:none;">
+
+  <svg xmlns="http://www.w3.org/2000/svg" height="24px"viewBox="0 0 24 24"
+       width="24px">
+    <path d="M7,19H8.4L18.45,9,17,7.55,7,17.6ZM5,21V16.75L18.45,3.32a2,2,0,0,1,2.83,0l1.4,1.43a1.91,1.91,0,0,1,.58,1.4,1.91,1.91,0,0,1-.58,1.4L9.25,21ZM18.45,9,17,7.55Zm-12,3A5.31,5.31,0,0,0,4.9,8.1,5.31,5.31,0,0,0,1,6.5,5.31,5.31,0,0,0,4.9,4.9,5.31,5.31,0,0,0,6.5,1,5.31,5.31,0,0,0,8.1,4.9,5.31,5.31,0,0,0,12,6.5,5.46,5.46,0,0,0,6.5,12Z"/>
+  </svg>
+    </button>
+    <script>
+      (() => {
+      const buttonEl =
+        document.querySelector('#id_b46744f8-4ced-47f4-888b-029bbb221aa3 button.colab-df-generate');
+      buttonEl.style.display =
+        google.colab.kernel.accessAllowed ? 'block' : 'none';
+
+      buttonEl.onclick = () => {
+        google.colab.notebook.generateWithVariable('df');
+      }
+      })();
+    </script>
+  </div>
+
+    </div>
+  </div>
+
+</div>
+</div>
+<section id="4-exploratory-data-analysis" class="cell markdown" id="SJYBmKud1OMc">
+<h1><strong>4. Exploratory Data Analysis</strong></h1>
+</section>
+<section id="analysis-1-time-of-day-and-severity" class="cell markdown" id="bAUU87Np9uUU">
+<h3><strong>Analysis 1: Time of Day and Severity</strong></h3>
+<hr />
+</section>
+<div class="cell markdown" id="PQ3ygRdOAC2d">
+<p>Preprocessing dataframe to organize a sub df for data used for examining relationship between time of day and accident severity.</p>
+</div>
+<div class="cell code" data-execution_count="11" data-colab="{&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="PxHo5TzaAAGS" data-outputId="7aa90d4b-9e5a-4073-c5e4-2ca9178b0253">
+<div class="sourceCode" id="cb7"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a>time_df <span class="op">=</span> df[[<span class="st">&#39;Severity&#39;</span>, <span class="st">&#39;Sunrise_Sunset&#39;</span>]]</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a>time_df <span class="op">=</span> time_df.dropna()</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true"></a>time_df.info()</span></code></pre></div>
+<div class="output stream stdout">
+<pre><code>&lt;class &#39;pandas.core.frame.DataFrame&#39;&gt;
+Index: 100743 entries, 0 to 101044
+Data columns (total 2 columns):
+ #   Column          Non-Null Count   Dtype 
+---  ------          --------------   ----- 
+ 0   Severity        100743 non-null  int64 
+ 1   Sunrise_Sunset  100743 non-null  object
+dtypes: int64(1), object(1)
+memory usage: 2.3+ MB
+</code></pre>
+</div>
+</div>
+<div class="cell markdown" id="LIRZ9NM2AX5N">
+<p><strong>Plot:</strong> visualization of time of data vs severity</p>
+</div>
+<div class="cell code" data-execution_count="31" data-colab="{&quot;height&quot;:472,&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="ZCaRnMGaAdWF" data-outputId="b706cacb-553e-403e-d505-052d57082b73">
+<div class="sourceCode" id="cb9"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a>sns.countplot(x<span class="op">=</span><span class="st">&#39;Severity&#39;</span>, hue<span class="op">=</span><span class="st">&#39;Sunrise_Sunset&#39;</span>, data<span class="op">=</span>time_df)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a>plt.title(<span class="st">&#39;Level of Severity of Accidents Distributed Between Day VS Night&#39;</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a>plt.show()</span></code></pre></div>
+<div class="output display_data">
+<p><img src="0eae6d3618989442dfc58e74e3d73b913bceedf6.png" /></p>
+</div>
+</div>
+<div class="cell markdown" id="TH0As1yvAqbz">
+<p><strong>Hypothesis Testing</strong>: T-test</p>
+<p>Null Hypothesis: there is no significant difference in the mean severity of accidents in the day vs night.</p>
+<p>Alternative Hypothesis: there is a significant difference in the mean severity of accidents in the day vs the night.</p>
+</div>
+<div class="cell code" data-execution_count="13" data-colab="{&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="izETafMlA2ar" data-outputId="8c054c5e-b187-4ad9-e1fa-bd778db78c85">
+<div class="sourceCode" id="cb10"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a>day <span class="op">=</span> time_df[time_df[<span class="st">&#39;Sunrise_Sunset&#39;</span>] <span class="op">==</span> <span class="st">&#39;Day&#39;</span>][<span class="st">&#39;Severity&#39;</span>]</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a>night <span class="op">=</span> time_df[time_df[<span class="st">&#39;Sunrise_Sunset&#39;</span>] <span class="op">==</span> <span class="st">&#39;Night&#39;</span>][<span class="st">&#39;Severity&#39;</span>]</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a>t_stat, p_value <span class="op">=</span> stats.ttest_ind(day, night)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true"></a><span class="bu">print</span>(p_value)</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a><span class="bu">print</span>(t_stat)</span></code></pre></div>
+<div class="output stream stdout">
+<pre><code>0.016270965814169723
+-2.4028205472755837
+</code></pre>
+</div>
+</div>
+<div class="cell markdown" id="kPamGnqGA7jM">
+<p><strong>Conclusion:</strong> Since p &lt; alpha = 0.05, we reject the null hypothesis. This means there is a significant difference between the severity of accidents in the day vs the night.</p>
+</div>
+<section id="-analysis-2-weather-and-severity" class="cell markdown" id="PFpdXaCNhG33">
+<h2>### <strong>Analysis 2: Weather and Severity</strong></h2>
+</section>
+<div class="cell markdown" id="Y7zAPbR_2QHz">
+<p>Create sub dataframe that concerns only weather and severity.</p>
+</div>
+<div class="cell code" data-execution_count="14" data-colab="{&quot;height&quot;:204,&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="Y3x5D-TnsOCH" data-outputId="d5f1bcac-11d4-4a00-daff-a2767fcf8811">
+<div class="sourceCode" id="cb12"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="co"># weather_df represents my dataframe with the only the values I will be working with</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a>weather_df <span class="op">=</span> df[[<span class="st">&#39;ID&#39;</span>, <span class="st">&#39;Severity&#39;</span>, <span class="st">&#39;Weather_Condition&#39;</span>]]</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true"></a>weather_df <span class="op">=</span> weather_df.dropna()</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true"></a>weather_df.head()</span></code></pre></div>
+<div class="output execute_result" data-execution_count="14">
+
+  <div id="df-b6329754-e2da-432b-ad93-d286ecac63b8" class="colab-df-container">
+    <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ID</th>
+      <th>Severity</th>
+      <th>Weather_Condition</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>A-2047758</td>
+      <td>2</td>
+      <td>Fair</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>A-4694324</td>
+      <td>2</td>
+      <td>Fair</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>A-5006183</td>
+      <td>2</td>
+      <td>Fair</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>A-4237356</td>
+      <td>2</td>
+      <td>Wintry Mix</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>A-6690583</td>
+      <td>2</td>
+      <td>Fair</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+    <div class="colab-df-buttons">
+
+  <div class="colab-df-container">
+    <button class="colab-df-convert" onclick="convertToInteractive('df-b6329754-e2da-432b-ad93-d286ecac63b8')"
+            title="Convert this dataframe to an interactive table."
+            style="display:none;">
+
+  <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960">
+    <path d="M120-120v-720h720v720H120Zm60-500h600v-160H180v160Zm220 220h160v-160H400v160Zm0 220h160v-160H400v160ZM180-400h160v-160H180v160Zm440 0h160v-160H620v160ZM180-180h160v-160H180v160Zm440 0h160v-160H620v160Z"/>
+  </svg>
+    </button>
+
+  <style>
+    .colab-df-container {
+      display:flex;
+      gap: 12px;
+    }
+
+    .colab-df-convert {
+      background-color: #E8F0FE;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      fill: #1967D2;
+      height: 32px;
+      padding: 0 0 0 0;
+      width: 32px;
+    }
+
+    .colab-df-convert:hover {
+      background-color: #E2EBFA;
+      box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
+      fill: #174EA6;
+    }
+
+    .colab-df-buttons div {
+      margin-bottom: 4px;
+    }
+
+    [theme=dark] .colab-df-convert {
+      background-color: #3B4455;
+      fill: #D2E3FC;
+    }
+
+    [theme=dark] .colab-df-convert:hover {
+      background-color: #434B5C;
+      box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+      filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
+      fill: #FFFFFF;
+    }
+  </style>
+
+    <script>
+      const buttonEl =
+        document.querySelector('#df-b6329754-e2da-432b-ad93-d286ecac63b8 button.colab-df-convert');
+      buttonEl.style.display =
+        google.colab.kernel.accessAllowed ? 'block' : 'none';
+
+      async function convertToInteractive(key) {
+        const element = document.querySelector('#df-b6329754-e2da-432b-ad93-d286ecac63b8');
+        const dataTable =
+          await google.colab.kernel.invokeFunction('convertToInteractive',
+                                                    [key], {});
+        if (!dataTable) return;
+
+        const docLinkHtml = 'Like what you see? Visit the ' +
+          '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
+          + ' to learn more about interactive tables.';
+        element.innerHTML = '';
+        dataTable['output_type'] = 'display_data';
+        await google.colab.output.renderOutput(dataTable, element);
+        const docLink = document.createElement('div');
+        docLink.innerHTML = docLinkHtml;
+        element.appendChild(docLink);
+      }
+    </script>
+  </div>
+
+
+<div id="df-1b5e22a0-b9d5-4651-a5d4-4e71bff91a91">
+  <button class="colab-df-quickchart" onclick="quickchart('df-1b5e22a0-b9d5-4651-a5d4-4e71bff91a91')"
+            title="Suggest charts"
+            style="display:none;">
+
+<svg xmlns="http://www.w3.org/2000/svg" height="24px"viewBox="0 0 24 24"
+     width="24px">
+    <g>
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+    </g>
+</svg>
+  </button>
+
+<style>
+  .colab-df-quickchart {
+      --bg-color: #E8F0FE;
+      --fill-color: #1967D2;
+      --hover-bg-color: #E2EBFA;
+      --hover-fill-color: #174EA6;
+      --disabled-fill-color: #AAA;
+      --disabled-bg-color: #DDD;
+  }
+
+  [theme=dark] .colab-df-quickchart {
+      --bg-color: #3B4455;
+      --fill-color: #D2E3FC;
+      --hover-bg-color: #434B5C;
+      --hover-fill-color: #FFFFFF;
+      --disabled-bg-color: #3B4455;
+      --disabled-fill-color: #666;
+  }
+
+  .colab-df-quickchart {
+    background-color: var(--bg-color);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: none;
+    fill: var(--fill-color);
+    height: 32px;
+    padding: 0;
+    width: 32px;
+  }
+
+  .colab-df-quickchart:hover {
+    background-color: var(--hover-bg-color);
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+    fill: var(--button-hover-fill-color);
+  }
+
+  .colab-df-quickchart-complete:disabled,
+  .colab-df-quickchart-complete:disabled:hover {
+    background-color: var(--disabled-bg-color);
+    fill: var(--disabled-fill-color);
+    box-shadow: none;
+  }
+
+  .colab-df-spinner {
+    border: 2px solid var(--fill-color);
+    border-color: transparent;
+    border-bottom-color: var(--fill-color);
+    animation:
+      spin 1s steps(1) infinite;
+  }
+
+  @keyframes spin {
+    0% {
+      border-color: transparent;
+      border-bottom-color: var(--fill-color);
+      border-left-color: var(--fill-color);
+    }
+    20% {
+      border-color: transparent;
+      border-left-color: var(--fill-color);
+      border-top-color: var(--fill-color);
+    }
+    30% {
+      border-color: transparent;
+      border-left-color: var(--fill-color);
+      border-top-color: var(--fill-color);
+      border-right-color: var(--fill-color);
+    }
+    40% {
+      border-color: transparent;
+      border-right-color: var(--fill-color);
+      border-top-color: var(--fill-color);
+    }
+    60% {
+      border-color: transparent;
+      border-right-color: var(--fill-color);
+    }
+    80% {
+      border-color: transparent;
+      border-right-color: var(--fill-color);
+      border-bottom-color: var(--fill-color);
+    }
+    90% {
+      border-color: transparent;
+      border-bottom-color: var(--fill-color);
+    }
+  }
+</style>
+
+  <script>
+    async function quickchart(key) {
+      const quickchartButtonEl =
+        document.querySelector('#' + key + ' button');
+      quickchartButtonEl.disabled = true;  // To prevent multiple clicks.
+      quickchartButtonEl.classList.add('colab-df-spinner');
+      try {
+        const charts = await google.colab.kernel.invokeFunction(
+            'suggestCharts', [key], {});
+      } catch (error) {
+        console.error('Error during call to suggestCharts:', error);
+      }
+      quickchartButtonEl.classList.remove('colab-df-spinner');
+      quickchartButtonEl.classList.add('colab-df-quickchart-complete');
+    }
+    (() => {
+      let quickchartButtonEl =
+        document.querySelector('#df-1b5e22a0-b9d5-4651-a5d4-4e71bff91a91 button');
+      quickchartButtonEl.style.display =
+        google.colab.kernel.accessAllowed ? 'block' : 'none';
+    })();
+  </script>
+</div>
+
+    </div>
+  </div>
+
+</div>
+</div>
+<div class="cell markdown" id="hVQAv8nGg8b8">
+<p><strong>Preprocess:</strong> Map all precipitation, cloudy, and low visibility related weather conditions together.</p>
+</div>
+<div class="cell code" data-execution_count="15" id="Gb7iqBjx_xrh">
+<div class="sourceCode" id="cb13"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a><span class="co"># Precipitation Conditions</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a>precipitation_conditions <span class="op">=</span> [<span class="st">&#39;rain&#39;</span>, <span class="st">&#39;shower&#39;</span>, <span class="st">&#39;drizzle&#39;</span>, <span class="st">&#39;storm&#39;</span>, <span class="st">&#39;thunder&#39;</span>, <span class="st">&#39;mist&#39;</span>, <span class="st">&#39;snow&#39;</span>, <span class="st">&#39;sleet&#39;</span>, <span class="st">&#39;hail&#39;</span>, <span class="st">&#39;wintry&#39;</span>, <span class="st">&#39;ice&#39;</span>, <span class="st">&#39;precipitation&#39;</span>]</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true"></a><span class="kw">def</span> map_to_precipitation(condition):</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true"></a>    <span class="co"># Check if any of the keywords are in the condition (case insensitive)</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true"></a>    <span class="cf">if</span> <span class="bu">any</span>(keyword <span class="kw">in</span> condition.lower() <span class="cf">for</span> keyword <span class="kw">in</span> precipitation_conditions):</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true"></a>        <span class="cf">return</span> <span class="st">&#39;Precipitation&#39;</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true"></a>    <span class="cf">else</span>:</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true"></a>        <span class="cf">return</span> condition</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true"></a>weather_df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">=</span> weather_df[<span class="st">&#39;Weather_Condition&#39;</span>].<span class="bu">apply</span>(map_to_precipitation)</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true"></a></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true"></a><span class="co"># Cloudy Conditions</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true"></a>cloudy_conditions <span class="op">=</span> [<span class="st">&#39;cloud&#39;</span>, <span class="st">&#39;overcast&#39;</span>]</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true"></a><span class="kw">def</span> map_to_cloudy(condition):</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true"></a>    <span class="co"># Check if any of the keywords are in the condition (case insensitive)</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true"></a>    <span class="cf">if</span> <span class="bu">any</span>(keyword <span class="kw">in</span> condition.lower() <span class="cf">for</span> keyword <span class="kw">in</span> cloudy_conditions):</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true"></a>        <span class="cf">return</span> <span class="st">&#39;Cloudy&#39;</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true"></a>    <span class="cf">else</span>:</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true"></a>        <span class="cf">return</span> condition</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true"></a>weather_df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">=</span> weather_df[<span class="st">&#39;Weather_Condition&#39;</span>].<span class="bu">apply</span>(map_to_cloudy)</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true"></a></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true"></a><span class="co"># Low Visibility Conditions</span></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true"></a>low_vis_conditions <span class="op">=</span> [<span class="st">&#39;fog&#39;</span>, <span class="st">&#39;haze&#39;</span>, <span class="st">&#39;dust&#39;</span>, <span class="st">&#39;smoke&#39;</span>, <span class="st">&#39;ash&#39;</span>, <span class="st">&#39;sand&#39;</span>,<span class="st">&#39;tornado&#39;</span>, <span class="st">&#39;squalls&#39;</span>]</span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true"></a><span class="kw">def</span> map_to_low_vis(condition):</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true"></a>    <span class="co"># Check if any of the keywords are in the condition (case insensitive)</span></span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true"></a>    <span class="cf">if</span> <span class="bu">any</span>(keyword <span class="kw">in</span> condition.lower() <span class="cf">for</span> keyword <span class="kw">in</span> low_vis_conditions):</span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true"></a>        <span class="cf">return</span> <span class="st">&#39;Low Visibility&#39;</span></span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true"></a>    <span class="cf">else</span>:</span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true"></a>        <span class="cf">return</span> condition</span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true"></a>weather_df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">=</span> weather_df[<span class="st">&#39;Weather_Condition&#39;</span>].<span class="bu">apply</span>(map_to_low_vis)</span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true"></a></span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true"></a><span class="co"># Fair Conditions</span></span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true"></a>fair_conditions <span class="op">=</span> [<span class="st">&#39;fair&#39;</span>, <span class="st">&#39;clear&#39;</span>]</span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true"></a><span class="kw">def</span> map_to_fair(condition):</span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true"></a>    <span class="co"># Check if any of the keywords are in the condition (case insensitive)</span></span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true"></a>    <span class="cf">if</span> <span class="bu">any</span>(keyword <span class="kw">in</span> condition.lower() <span class="cf">for</span> keyword <span class="kw">in</span> fair_conditions):</span>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true"></a>        <span class="cf">return</span> <span class="st">&#39;Fair&#39;</span></span>
+<span id="cb13-37"><a href="#cb13-37" aria-hidden="true"></a>    <span class="cf">else</span>:</span>
+<span id="cb13-38"><a href="#cb13-38" aria-hidden="true"></a>        <span class="cf">return</span> condition</span>
+<span id="cb13-39"><a href="#cb13-39" aria-hidden="true"></a>weather_df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">=</span> weather_df[<span class="st">&#39;Weather_Condition&#39;</span>].<span class="bu">apply</span>(map_to_fair)</span></code></pre></div>
+</div>
+<div class="cell markdown" id="QWgQZJUGHx9-">
+<p><strong>Hypothesis Test: Kruskal-Wallis H Test</strong></p>
+<p>Null Hypothesis: The seversity of accident is the same across all weather conditions.</p>
+<p>Alternative Hypothesis: At least one weather condition has a different distribution of severity ranks.</p>
+<p>Alpha: 0.05</p>
+</div>
+<div class="cell code" data-execution_count="16" data-colab="{&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="uWf_LYOEGYBB" data-outputId="c29ffd49-1fc9-4f49-8385-7604922d1e25">
+<div class="sourceCode" id="cb14"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="co"># Perform Kruskal-Wallis Test</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a>kruskal_result <span class="op">=</span> stats.kruskal(</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true"></a>    weather_df[weather_df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">==</span> <span class="st">&#39;Fair&#39;</span>][<span class="st">&#39;Severity&#39;</span>],</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true"></a>    weather_df[weather_df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">==</span> <span class="st">&#39;Cloudy&#39;</span>][<span class="st">&#39;Severity&#39;</span>],</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true"></a>    weather_df[weather_df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">==</span> <span class="st">&#39;Precipitation&#39;</span>][<span class="st">&#39;Severity&#39;</span>],</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true"></a>    weather_df[weather_df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">==</span> <span class="st">&#39;Low Visibility&#39;</span>][<span class="st">&#39;Severity&#39;</span>]</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true"></a>)</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true"></a></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true"></a><span class="bu">print</span>(kruskal_result)</span></code></pre></div>
+<div class="output stream stdout">
+<pre><code>KruskalResult(statistic=395.56608590943495, pvalue=2.0209668520030872e-85)
+</code></pre>
+</div>
+</div>
+<div class="cell markdown" id="Yk9URmaIHxKg">
+<p><strong>Interpretation:</strong> Since the p-value of 0.0 is less than our threshold of 0.05, that means we reject the null hypothesis, and at least one of the weather conditions does have a different distribution.</p>
+<p>The Mann-Whitney U Test will be used as a post-hoc test to determine which weather condition had a different distribution.</p>
+</div>
+<div class="cell code" data-execution_count="17" data-colab="{&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="1Bi-6O-1JP-V" data-outputId="30a5196e-d903-4191-97f5-ae5b9f30a348">
+<div class="sourceCode" id="cb16"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a>conditions <span class="op">=</span> weather_df[<span class="st">&#39;Weather_Condition&#39;</span>].unique()</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true"></a><span class="co"># Create an empty list to store results</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true"></a>p_values <span class="op">=</span> []</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true"></a><span class="co"># Perform pairwise comparisons (Mann-Whitney U test)</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true"></a><span class="cf">for</span> cond1, cond2 <span class="kw">in</span> combinations(conditions, <span class="dv">2</span>):</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true"></a>    group1 <span class="op">=</span> weather_df[weather_df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">==</span> cond1][<span class="st">&#39;Severity&#39;</span>]</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true"></a>    group2 <span class="op">=</span> weather_df[weather_df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">==</span> cond2][<span class="st">&#39;Severity&#39;</span>]</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true"></a></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true"></a>    <span class="co"># Perform the Mann-Whitney U test</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true"></a>    stat, p_value <span class="op">=</span> mannwhitneyu(group1, group2, alternative<span class="op">=</span><span class="st">&#39;two-sided&#39;</span>)</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true"></a></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true"></a>    <span class="co"># Store the results in a list</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true"></a>    p_values.append((cond1, cond2, p_value))</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true"></a></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true"></a><span class="co"># Convert results into a DataFrame</span></span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true"></a>pairwise_results <span class="op">=</span> pd.DataFrame(p_values, columns<span class="op">=</span>[<span class="st">&#39;Condition 1&#39;</span>, <span class="st">&#39;Condition 2&#39;</span>, <span class="st">&#39;p-value&#39;</span>])</span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true"></a></span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true"></a><span class="co"># Apply Bonferroni correction for multiple comparisons</span></span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true"></a>pairwise_results[<span class="st">&#39;p-adjusted&#39;</span>] <span class="op">=</span> multitest.multipletests(pairwise_results[<span class="st">&#39;p-value&#39;</span>], method<span class="op">=</span><span class="st">&#39;bonferroni&#39;</span>)[<span class="dv">1</span>]</span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true"></a></span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true"></a><span class="co"># Display the results</span></span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true"></a><span class="bu">print</span>(pairwise_results)</span></code></pre></div>
+<div class="output stream stdout">
+<pre><code>     Condition 1     Condition 2       p-value    p-adjusted
+0           Fair   Precipitation  4.210090e-36  2.526054e-35
+1           Fair          Cloudy  1.435188e-75  8.611125e-75
+2           Fair  Low Visibility  8.826114e-01  1.000000e+00
+3  Precipitation          Cloudy  5.058679e-01  1.000000e+00
+4  Precipitation  Low Visibility  4.622715e-09  2.773629e-08
+5         Cloudy  Low Visibility  3.279177e-09  1.967506e-08
+</code></pre>
+</div>
+</div>
+<div class="cell markdown" id="S2_DyBVVKGcn">
+<p><strong>Conclusion:</strong> The relationship between Fair/Low Visibility and Precipitation/Cloudy don't have different distributions because their p-values are 0.2 and 0.15 respectively, which are both &gt; 0.05. However, every other pair is under our threshold, meaning they reject the null hypothesis and have different severity distributions from each other.</p>
+<p><strong>Plot:</strong> Scattorplot will be used to get a visualisation of distributions.</p>
+</div>
+<div class="cell code" data-execution_count="32" data-colab="{&quot;height&quot;:520,&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="s8yi51TQKs2S" data-outputId="75fba582-359f-4d7c-fdf1-b043e50d4988">
+<div class="sourceCode" id="cb18"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a><span class="co"># Filter the dataframe for the relevant weather conditions</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a>conditions <span class="op">=</span> [<span class="st">&#39;Cloudy&#39;</span>, <span class="st">&#39;Precipitation&#39;</span>, <span class="st">&#39;Fair&#39;</span>, <span class="st">&#39;Low Visibility&#39;</span>]</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true"></a>filtered_data <span class="op">=</span> weather_df[weather_df[<span class="st">&#39;Weather_Condition&#39;</span>].isin(conditions)]</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true"></a></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true"></a><span class="co"># Count occurrences of each severity level for each weather condition</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true"></a>counts <span class="op">=</span> filtered_data.groupby([<span class="st">&#39;Weather_Condition&#39;</span>, <span class="st">&#39;Severity&#39;</span>]).size().unstack(fill_value<span class="op">=</span><span class="dv">0</span>)</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true"></a></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true"></a><span class="co"># Calculate percentages</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true"></a>percentage_counts <span class="op">=</span> counts.div(counts.<span class="bu">sum</span>(axis<span class="op">=</span><span class="dv">1</span>), axis<span class="op">=</span><span class="dv">0</span>) <span class="op">*</span> <span class="dv">100</span></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true"></a></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true"></a><span class="co"># Reset the index to long format for seaborn</span></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true"></a>percentage_data <span class="op">=</span> percentage_counts.reset_index().melt(id_vars<span class="op">=</span><span class="st">&#39;Weather_Condition&#39;</span>, var_name<span class="op">=</span><span class="st">&#39;Severity&#39;</span>, value_name<span class="op">=</span><span class="st">&#39;Percentage&#39;</span>)</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true"></a></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true"></a><span class="co"># Create a bar plot for percentages</span></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true"></a>sns.barplot(x<span class="op">=</span><span class="st">&#39;Severity&#39;</span>, y<span class="op">=</span><span class="st">&#39;Percentage&#39;</span>, hue<span class="op">=</span><span class="st">&#39;Weather_Condition&#39;</span>, data<span class="op">=</span>percentage_data)</span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true"></a></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true"></a><span class="co"># Add labels and title</span></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true"></a>plt.xlabel(<span class="st">&#39;Severity Level&#39;</span>)</span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true"></a>plt.ylabel(<span class="st">&#39;Percentage (%)&#39;</span>)</span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true"></a>plt.title(<span class="st">&#39;Percentage of Severity Levels for Different Weather Conditions&#39;</span>)</span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true"></a></span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true"></a><span class="co"># Show the plot</span></span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true"></a>plt.legend(title<span class="op">=</span><span class="st">&#39;Weather Condition&#39;</span>)</span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true"></a>plt.show()</span></code></pre></div>
+<div class="output display_data">
+<p><img src="b6389e039ba2d5e4a7a0ad0e04ef0a241307332a.png" /></p>
+</div>
+</div>
+<section id="analysis-3-location-by-state-and-severity" class="cell markdown" id="Q_zQho8kmaFk">
+<h3><strong>Analysis 3: Location (By State) and Severity</strong></h3>
+<hr />
+<p><strong>Hypothesis Test:</strong> Chi-Squared Test</p>
+</section>
+<div class="cell markdown" id="jr91GRe2p_OZ">
+<p>Null Hypothesis (H₀): There is no association between the state where an accident occurs and the severity of the accident. The two variables are independent.</p>
+<p>Alternative Hypothesis (H₁): There is a significant association between the state and the severity of the accident. The two variables are not independent.</p>
+</div>
+<div class="cell code" data-execution_count="19" data-colab="{&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="uLEpzRSWmhHm" data-outputId="f1df32a8-541c-44c2-f785-f9baf242149f">
+<div class="sourceCode" id="cb19"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true"></a><span class="im">from</span> scipy.stats <span class="im">import</span> chi2_contingency</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true"></a><span class="im">import</span> seaborn <span class="im">as</span> sns</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true"></a></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true"></a>contingency_table <span class="op">=</span> pd.crosstab(df[<span class="st">&#39;State&#39;</span>], df[<span class="st">&#39;Severity&#39;</span>])</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true"></a></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true"></a><span class="co"># Perform the Chi-Square test</span></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true"></a>chi2, p, dof, expected <span class="op">=</span> stats.chi2_contingency(contingency_table)</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true"></a></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true"></a><span class="co"># Print a concise interpretation</span></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true"></a><span class="bu">print</span>(<span class="ss">f&quot;Chi-Square Statistic: </span><span class="sc">{</span>chi2<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true"></a><span class="bu">print</span>(<span class="ss">f&quot;P-value: </span><span class="sc">{p}</span><span class="ss">&quot;</span>)</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true"></a><span class="bu">print</span>(<span class="ss">f&quot;Degrees of Freedom: </span><span class="sc">{</span>dof<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true"></a></span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true"></a><span class="cf">if</span> p <span class="op">&lt;</span> <span class="fl">0.05</span>:</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true"></a>    <span class="bu">print</span>(<span class="st">&quot;Reject the null hypothesis – There is a significant association between state and severity of accidents.&quot;</span>)</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true"></a><span class="cf">else</span>:</span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true"></a>    <span class="bu">print</span>(<span class="st">&quot;Fail to reject the null hypothesis – No significant association between state and severity of accidents.&quot;</span>)</span></code></pre></div>
+<div class="output stream stdout">
+<pre><code>Chi-Square Statistic: 6436.232099878778
+P-value: 0.0
+Degrees of Freedom: 144
+Reject the null hypothesis – There is a significant association between state and severity of accidents.
+</code></pre>
+</div>
+</div>
+<div class="cell markdown" id="guY37lVx4Jen">
+<p><strong>Plot:</strong></p>
+</div>
+<div class="cell code" data-execution_count="33" data-colab="{&quot;height&quot;:596,&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="v9ZMQtgmtBwo" data-outputId="a14f7c81-0b84-404d-8052-6e5d16419824">
+<div class="sourceCode" id="cb21"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true"></a><span class="im">import</span> seaborn <span class="im">as</span> sns</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true"></a></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true"></a>severity_counts <span class="op">=</span> df.groupby([<span class="st">&#39;State&#39;</span>, <span class="st">&#39;Severity&#39;</span>]).size().unstack()</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true"></a></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true"></a>severity_counts.plot(kind<span class="op">=</span><span class="st">&#39;bar&#39;</span>, stacked<span class="op">=</span><span class="va">True</span>, figsize<span class="op">=</span>(<span class="dv">12</span>, <span class="dv">9</span>), colormap<span class="op">=</span><span class="st">&#39;viridis&#39;</span>)</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true"></a></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true"></a>plt.xlabel(<span class="st">&#39;State&#39;</span>)</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true"></a>plt.ylabel(<span class="st">&#39;Count of Accidents&#39;</span>)</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true"></a>plt.title(<span class="st">&#39;Comparison of Traffic Accident Severity Across States&#39;</span>)</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true"></a>plt.xticks(rotation<span class="op">=</span><span class="dv">45</span>, ha<span class="op">=</span><span class="st">&quot;right&quot;</span>)</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true"></a>plt.legend(title<span class="op">=</span><span class="st">&#39;Severity Level&#39;</span>, bbox_to_anchor<span class="op">=</span>(<span class="fl">1.05</span>, <span class="dv">1</span>), loc<span class="op">=</span><span class="st">&#39;upper left&#39;</span>)</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true"></a></span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true"></a>plt.tight_layout()</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true"></a>plt.show()</span></code></pre></div>
+<div class="output display_data">
+<p><img src="b03684d9c5223925fb7e5057bd5c5edda843e37d.png" /></p>
+</div>
+</div>
+<div class="cell markdown" id="Prkjpb53qE5-">
+<p><strong>Conclusion:</strong></p>
+<p>The test returned a Chi-square statistic of chi2 with a p-value of p. Since the p-value is less than our threshold of 0.05, we reject the null hypothesis and conclude that there is a significant association between the state in which an accident occurs and the severity of that accident. This suggests that accident severity may vary by state.</p>
+</div>
+<section id="5-primary-analysis" class="cell markdown" id="wGMb622l4d_c">
+<h1><strong>5. Primary Analysis</strong></h1>
+</section>
+<div class="cell markdown" id="DvcKvNrHOEY7">
+<p>To answer the key questions, the machine learning technique used will be Random Forest Classifier using multi-class classification with Weather_Condtion, Hour_of_Day, and State as the input and Severity as the output.</p>
+<p>Random Forest Classification will be able to handle non-linear and complex relationships between the three separate inputs. It will also provide feature importance information to answer the question of which feature is most important for determining and preventing traffic accidents.</p>
+</div>
+<div class="cell markdown" id="EI_y9R9pO7pW">
+<p><strong>Prepare Data</strong></p>
+</div>
+<div class="cell code" data-execution_count="21" id="gTOmlojBODZM">
+<div class="sourceCode" id="cb22"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true"></a><span class="im">from</span> sklearn.preprocessing <span class="im">import</span> LabelEncoder</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true"></a></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true"></a><span class="co"># Encode Weather_Condition and State</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true"></a>weather_encoder <span class="op">=</span> LabelEncoder()</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true"></a>state_encoder <span class="op">=</span> LabelEncoder()</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true"></a>df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">=</span> weather_df[<span class="st">&#39;Weather_Condition&#39;</span>]</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true"></a>df[<span class="st">&#39;Weather_Condition&#39;</span>] <span class="op">=</span> weather_encoder.fit_transform(df[<span class="st">&#39;Weather_Condition&#39;</span>])</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true"></a>df[<span class="st">&#39;State&#39;</span>] <span class="op">=</span> state_encoder.fit_transform(df[<span class="st">&#39;State&#39;</span>])</span></code></pre></div>
+</div>
+<div class="cell markdown" id="xEsdIFawPAlS">
+<p><strong>Defining X and y</strong></p>
+</div>
+<div class="cell code" data-execution_count="22" id="Sw8yCGT5OxY4">
+<div class="sourceCode" id="cb23"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true"></a>X <span class="op">=</span> df[[<span class="st">&#39;Weather_Condition&#39;</span>, <span class="st">&#39;Hour_of_Day&#39;</span>, <span class="st">&#39;State&#39;</span>]]</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true"></a>y <span class="op">=</span> df[<span class="st">&#39;Severity&#39;</span>]</span></code></pre></div>
+</div>
+<div class="cell markdown" id="qWHXPZkePRXt">
+<p><strong>Split Data</strong></p>
+</div>
+<div class="cell code" data-execution_count="23" id="oBfTDTvSOzRk">
+<div class="sourceCode" id="cb24"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true"></a><span class="im">from</span> sklearn.model_selection <span class="im">import</span> train_test_split</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true"></a></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true"></a>X_train, X_test, y_train, y_test <span class="op">=</span> train_test_split(X, y, test_size<span class="op">=</span><span class="fl">0.2</span>, random_state<span class="op">=</span><span class="dv">42</span>)</span></code></pre></div>
+</div>
+<div class="cell markdown" id="e7PQdukFPVRZ">
+<p><strong>Train Model</strong></p>
+</div>
+<div class="cell code" data-execution_count="24" data-colab="{&quot;height&quot;:80,&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="M0O4H2UKO2qc" data-outputId="790b5fe3-b310-4d4b-86be-cb3e40deeb4f">
+<div class="sourceCode" id="cb25"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true"></a><span class="im">from</span> sklearn.ensemble <span class="im">import</span> RandomForestClassifier</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true"></a></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true"></a>clf <span class="op">=</span> RandomForestClassifier(class_weight<span class="op">=</span><span class="st">&#39;balanced&#39;</span>, random_state<span class="op">=</span><span class="dv">42</span>)</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true"></a>clf.fit(X_train, y_train)</span></code></pre></div>
+<div class="output execute_result" data-execution_count="24">
+<style>#sk-container-id-1 {
+  /* Definition of color scheme common for light and dark mode */
+  --sklearn-color-text: black;
+  --sklearn-color-line: gray;
+  /* Definition of color scheme for unfitted estimators */
+  --sklearn-color-unfitted-level-0: #fff5e6;
+  --sklearn-color-unfitted-level-1: #f6e4d2;
+  --sklearn-color-unfitted-level-2: #ffe0b3;
+  --sklearn-color-unfitted-level-3: chocolate;
+  /* Definition of color scheme for fitted estimators */
+  --sklearn-color-fitted-level-0: #f0f8ff;
+  --sklearn-color-fitted-level-1: #d4ebff;
+  --sklearn-color-fitted-level-2: #b3dbfd;
+  --sklearn-color-fitted-level-3: cornflowerblue;
+
+  /* Specific color for light theme */
+  --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, white)));
+  --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-icon: #696969;
+
+  @media (prefers-color-scheme: dark) {
+    /* Redefinition of color scheme for dark theme */
+    --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, #111)));
+    --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-icon: #878787;
+  }
+}
+
+#sk-container-id-1 {
+  color: var(--sklearn-color-text);
+}
+
+#sk-container-id-1 pre {
+  padding: 0;
+}
+
+#sk-container-id-1 input.sk-hidden--visually {
+  border: 0;
+  clip: rect(1px 1px 1px 1px);
+  clip: rect(1px, 1px, 1px, 1px);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+
+#sk-container-id-1 div.sk-dashed-wrapped {
+  border: 1px dashed var(--sklearn-color-line);
+  margin: 0 0.4em 0.5em 0.4em;
+  box-sizing: border-box;
+  padding-bottom: 0.4em;
+  background-color: var(--sklearn-color-background);
+}
+
+#sk-container-id-1 div.sk-container {
+  /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
+     but bootstrap.min.css set `[hidden] { display: none !important; }`
+     so we also need the `!important` here to be able to override the
+     default hidden behavior on the sphinx rendered scikit-learn.org.
+     See: https://github.com/scikit-learn/scikit-learn/issues/21755 */
+  display: inline-block !important;
+  position: relative;
+}
+
+#sk-container-id-1 div.sk-text-repr-fallback {
+  display: none;
+}
+
+div.sk-parallel-item,
+div.sk-serial,
+div.sk-item {
+  /* draw centered vertical line to link estimators */
+  background-image: linear-gradient(var(--sklearn-color-text-on-default-background), var(--sklearn-color-text-on-default-background));
+  background-size: 2px 100%;
+  background-repeat: no-repeat;
+  background-position: center center;
+}
+
+/* Parallel-specific style estimator block */
+
+#sk-container-id-1 div.sk-parallel-item::after {
+  content: "";
+  width: 100%;
+  border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
+  flex-grow: 1;
+}
+
+#sk-container-id-1 div.sk-parallel {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background-color: var(--sklearn-color-background);
+  position: relative;
+}
+
+#sk-container-id-1 div.sk-parallel-item {
+  display: flex;
+  flex-direction: column;
+}
+
+#sk-container-id-1 div.sk-parallel-item:first-child::after {
+  align-self: flex-end;
+  width: 50%;
+}
+
+#sk-container-id-1 div.sk-parallel-item:last-child::after {
+  align-self: flex-start;
+  width: 50%;
+}
+
+#sk-container-id-1 div.sk-parallel-item:only-child::after {
+  width: 0;
+}
+
+/* Serial-specific style estimator block */
+
+#sk-container-id-1 div.sk-serial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--sklearn-color-background);
+  padding-right: 1em;
+  padding-left: 1em;
+}
+
+
+/* Toggleable style: style used for estimator/Pipeline/ColumnTransformer box that is
+clickable and can be expanded/collapsed.
+- Pipeline and ColumnTransformer use this feature and define the default style
+- Estimators will overwrite some part of the style using the `sk-estimator` class
+*/
+
+/* Pipeline and ColumnTransformer style (default) */
+
+#sk-container-id-1 div.sk-toggleable {
+  /* Default theme specific background. It is overwritten whether we have a
+  specific estimator or a Pipeline/ColumnTransformer */
+  background-color: var(--sklearn-color-background);
+}
+
+/* Toggleable label */
+#sk-container-id-1 label.sk-toggleable__label {
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  margin-bottom: 0;
+  padding: 0.5em;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+#sk-container-id-1 label.sk-toggleable__label-arrow:before {
+  /* Arrow on the left of the label */
+  content: "▸";
+  float: left;
+  margin-right: 0.25em;
+  color: var(--sklearn-color-icon);
+}
+
+#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {
+  color: var(--sklearn-color-text);
+}
+
+/* Toggleable content - dropdown */
+
+#sk-container-id-1 div.sk-toggleable__content {
+  max-height: 0;
+  max-width: 0;
+  overflow: hidden;
+  text-align: left;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content pre {
+  margin: 0.2em;
+  border-radius: 0.25em;
+  color: var(--sklearn-color-text);
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content.fitted pre {
+  /* unfitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+  /* Expand drop-down */
+  max-height: 200px;
+  max-width: 100%;
+  overflow: auto;
+}
+
+#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+  content: "▾";
+}
+
+/* Pipeline/ColumnTransformer-specific style */
+
+#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator-specific style */
+
+/* Colorize estimator box */
+#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+#sk-container-id-1 div.sk-label label.sk-toggleable__label,
+#sk-container-id-1 div.sk-label label {
+  /* The background is the default theme color */
+  color: var(--sklearn-color-text-on-default-background);
+}
+
+/* On hover, darken the color of the background */
+#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+/* Label box, darken color on hover, fitted */
+#sk-container-id-1 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator label */
+
+#sk-container-id-1 div.sk-label label {
+  font-family: monospace;
+  font-weight: bold;
+  display: inline-block;
+  line-height: 1.2em;
+}
+
+#sk-container-id-1 div.sk-label-container {
+  text-align: center;
+}
+
+/* Estimator-specific */
+#sk-container-id-1 div.sk-estimator {
+  font-family: monospace;
+  border: 1px dotted var(--sklearn-color-border-box);
+  border-radius: 0.25em;
+  box-sizing: border-box;
+  margin-bottom: 0.5em;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+/* on hover */
+#sk-container-id-1 div.sk-estimator:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Specification for estimator info (e.g. "i" and "?") */
+
+/* Common style for "i" and "?" */
+
+.sk-estimator-doc-link,
+a:link.sk-estimator-doc-link,
+a:visited.sk-estimator-doc-link {
+  float: right;
+  font-size: smaller;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1em;
+  height: 1em;
+  width: 1em;
+  text-decoration: none !important;
+  margin-left: 1ex;
+  /* unfitted */
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+  color: var(--sklearn-color-unfitted-level-1);
+}
+
+.sk-estimator-doc-link.fitted,
+a:link.sk-estimator-doc-link.fitted,
+a:visited.sk-estimator-doc-link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+div.sk-estimator:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover,
+div.sk-label-container:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+div.sk-estimator.fitted:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover,
+div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+/* Span, style for the box shown on hovering the info icon */
+.sk-estimator-doc-link span {
+  display: none;
+  z-index: 9999;
+  position: relative;
+  font-weight: normal;
+  right: .2ex;
+  padding: .5ex;
+  margin: .5ex;
+  width: min-content;
+  min-width: 20ex;
+  max-width: 50ex;
+  color: var(--sklearn-color-text);
+  box-shadow: 2pt 2pt 4pt #999;
+  /* unfitted */
+  background: var(--sklearn-color-unfitted-level-0);
+  border: .5pt solid var(--sklearn-color-unfitted-level-3);
+}
+
+.sk-estimator-doc-link.fitted span {
+  /* fitted */
+  background: var(--sklearn-color-fitted-level-0);
+  border: var(--sklearn-color-fitted-level-3);
+}
+
+.sk-estimator-doc-link:hover span {
+  display: block;
+}
+
+/* "?"-specific style due to the `<a>` HTML tag */
+
+#sk-container-id-1 a.estimator_doc_link {
+  float: right;
+  font-size: 1rem;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1rem;
+  height: 1rem;
+  width: 1rem;
+  text-decoration: none;
+  /* unfitted */
+  color: var(--sklearn-color-unfitted-level-1);
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+}
+
+#sk-container-id-1 a.estimator_doc_link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+#sk-container-id-1 a.estimator_doc_link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+#sk-container-id-1 a.estimator_doc_link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+}
+</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>RandomForestClassifier(class_weight=&#x27;balanced&#x27;, random_state=42)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator fitted sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label fitted sk-toggleable__label-arrow fitted">&nbsp;&nbsp;RandomForestClassifier<a class="sk-estimator-doc-link fitted" rel="noreferrer" target="_blank" href="https://scikit-learn.org/1.5/modules/generated/sklearn.ensemble.RandomForestClassifier.html">?<span>Documentation for RandomForestClassifier</span></a><span class="sk-estimator-doc-link fitted">i<span>Fitted</span></span></label><div class="sk-toggleable__content fitted"><pre>RandomForestClassifier(class_weight=&#x27;balanced&#x27;, random_state=42)</pre></div> </div></div></div></div>
+</div>
+</div>
+<div class="cell markdown" id="vdifMNOYPY3H">
+<p><strong>Evaluate Model</strong></p>
+</div>
+<div class="cell code" data-execution_count="25" data-colab="{&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="vl1Ft-cWO4ow" data-outputId="43afa2de-ec07-4a91-b559-bec4a6ef1405">
+<div class="sourceCode" id="cb26"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true"></a><span class="im">from</span> sklearn.metrics <span class="im">import</span> classification_report, log_loss</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true"></a></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true"></a><span class="co"># Predict and evaluate</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true"></a>y_pred <span class="op">=</span> clf.predict(X_test)</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true"></a>y_pred_proba <span class="op">=</span> clf.predict_proba(X_test)</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true"></a></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true"></a><span class="co"># Classification report</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true"></a><span class="bu">print</span>(classification_report(y_test, y_pred))</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true"></a></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true"></a><span class="co"># Log loss</span></span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true"></a>loss <span class="op">=</span> log_loss(y_test, y_pred_proba)</span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true"></a><span class="bu">print</span>(<span class="ss">f&quot;Log Loss: </span><span class="sc">{</span>loss<span class="sc">}</span><span class="ss">&quot;</span>)</span></code></pre></div>
+<div class="output stream stdout">
+<pre><code>              precision    recall  f1-score   support
+
+           1       0.02      0.48      0.04       165
+           2       0.85      0.41      0.55     16158
+           3       0.23      0.36      0.28      3332
+           4       0.06      0.34      0.10       555
+
+    accuracy                           0.40     20210
+   macro avg       0.29      0.40      0.24     20210
+weighted avg       0.72      0.40      0.49     20210
+
+Log Loss: 1.5355465023050743
+</code></pre>
+</div>
+</div>
+<section id="6-visualization" class="cell markdown" id="UsLEXKo34XCC">
+<h1><strong>6. Visualization</strong></h1>
+</section>
+<div class="cell markdown" id="l0QqRIIwTulm">
+<p><strong>Confusion Matrix</strong></p>
+</div>
+<div class="cell code" data-execution_count="34" data-colab="{&quot;height&quot;:447,&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="zpPD8qm1TuCg" data-outputId="f1713971-4de3-44d9-b03f-3ae6342b7684">
+<div class="sourceCode" id="cb28"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true"></a><span class="im">from</span> sklearn.metrics <span class="im">import</span> confusion_matrix</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true"></a><span class="im">import</span> seaborn <span class="im">as</span> sns</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true"></a></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true"></a>cm <span class="op">=</span> confusion_matrix(y_test, y_pred)</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true"></a>sns.heatmap(cm, annot<span class="op">=</span><span class="va">True</span>, fmt<span class="op">=</span><span class="st">&#39;d&#39;</span>, cmap<span class="op">=</span><span class="st">&#39;Blues&#39;</span>)</span></code></pre></div>
+<div class="output execute_result" data-execution_count="34">
+<pre><code>&lt;Axes: &gt;</code></pre>
+</div>
+<div class="output display_data">
+<p><img src="ddcb185e91159a25d29d6c1fa87078927435f3c7.png" /></p>
+</div>
+</div>
+<div class="cell markdown" id="wp9famHSPqOL">
+<p><strong>Feature Importance</strong></p>
+</div>
+<div class="cell code" data-execution_count="35" data-colab="{&quot;height&quot;:472,&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="BMfUYH9fPuE0" data-outputId="e5ce75f4-cb80-4832-b60b-2aed5d5b22e4">
+<div class="sourceCode" id="cb30"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true"></a></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true"></a>importance <span class="op">=</span> clf.feature_importances_</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true"></a>feature_names <span class="op">=</span> [<span class="st">&#39;Weather_Condition&#39;</span>, <span class="st">&#39;Hour_of_Day&#39;</span>, <span class="st">&#39;State&#39;</span>]</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true"></a>plt.barh(np.arange(<span class="bu">len</span>(importance)), importance, tick_label<span class="op">=</span>feature_names)</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true"></a>plt.xlabel(<span class="st">&quot;Feature Importance&quot;</span>)</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true"></a>plt.title(<span class="st">&quot;Feature Importance in Predicting Severity&quot;</span>)</span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true"></a>plt.show()</span></code></pre></div>
+<div class="output display_data">
+<p><img src="a44ee2a95164ee181157df4e26bd5a2299121b02.png" /></p>
+</div>
+</div>
+<div class="cell markdown" id="tbv2N9XlPv4A">
+<p><strong>Probability Distributions</strong></p>
+</div>
+<div class="cell code" data-execution_count="36" data-colab="{&quot;height&quot;:525,&quot;base_uri&quot;:&quot;https://localhost:8080/&quot;}" id="q08aYkNtP38w" data-outputId="1949cac2-5a3c-4be5-afe6-28ae33c7536c">
+<div class="sourceCode" id="cb31"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true"></a><span class="im">import</span> seaborn <span class="im">as</span> sns</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true"></a></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">6</span>))</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true"></a><span class="cf">for</span> i, class_label <span class="kw">in</span> <span class="bu">enumerate</span>(clf.classes_):</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true"></a>    sns.kdeplot(y_pred_proba[:, i], label<span class="op">=</span><span class="ss">f&quot;Class </span><span class="sc">{</span>class_label<span class="sc">}</span><span class="ss">&quot;</span>)</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true"></a>plt.xlabel(<span class="st">&quot;Predicted Probability&quot;</span>)</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true"></a>plt.ylabel(<span class="st">&quot;Density&quot;</span>)</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true"></a>plt.title(<span class="st">&quot;Probability Distributions for Predicted Classes&quot;</span>)</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true"></a>plt.legend()</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true"></a>plt.show()</span></code></pre></div>
+<div class="output display_data">
+<p><img src="d2fac04e908e2b3d6523819f40594be5ae823aa2.png" /></p>
+</div>
+</div>
+<div class="cell markdown" id="cim0mKEyi5iA">
+<h1 id="7-insights-and-conclusions"><strong>7. Insights and Conclusions</strong></h1>
+<h1 id="key-takeaways">Key Takeaways:</h1>
+<p>From our initial data exploration, we are able to see that accidents during the night are more severe than those during the day. Furthermore, improved lighting and nighttime driving regulations could reduce severity. Additionally, precipitation and low visibility significantly increase accident severity. Enhanced warning systems and road maintenance during adverse weather can mitigate this. Some states experience more severe accidents than others, likely due to differences in road conditions, enforcement, or weather. This highlights the need for localized safety measures. In actuality, from the model that we created, using random forest classification, we can see from the feature importance that the most important factor in determining accident severity is the state that it occured in. From the data, we observed that California was the region with the highest density in accidents. The model is not as accurate as we would like it to be. This could be due to a multitude of factors. One of the factors that we have narrowed down is that the sampling of our data being uneven (densely populated data in specific regions). We could fix this by throwing out our state feature or focusing on one specific region in the United States at a time. Another fix would be to analyze the relationship between states and the other features to understand if region does have an impact on the other features and to account for any implications. Our model may not has been as accurate as possible because the relationship between the features are too complex, and its difficult to pick one as the defining factor for accident severity as they could all be interconnected to contribute. We may need a neural network or a more complicated model in order to account for this interconnected complexity.</p>
+<h1 id="future-work">Future Work:</h1>
+<p>In the future, we believe that analyzing other features, such as vehicle type or driver behavior, would be ideal for deeper insights. Furthermore, we would like to incorporate machine learning techniques to predict accident severity based on given conditions.</p>
+<h1 id="impact">Impact:</h1>
+<p>This analysis provides valuable insights for policymakers, urban planners, and transportation agencies to improve road safety and reduce traffic accident severity.</p>
+</div>
